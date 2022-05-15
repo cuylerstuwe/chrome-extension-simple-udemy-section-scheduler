@@ -46,7 +46,7 @@ const manifest = {
 
     content_scripts: [
         {
-            matches: ["<all_urls>"], // TODO: Make this more specific, rather than the template default of matching everything.
+            matches: ["https://www.udemy.com/course/*"], // TODO: Make this more specific, rather than the template default of matching everything.
             js: ["content.js"],
             // all_frames: true
         }
