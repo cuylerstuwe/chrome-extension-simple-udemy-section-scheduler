@@ -1,7 +1,7 @@
 {
   "author": "Cuyler Stuwe",
-  "name": "schedule-udemy-courses-on-google-calendar",
-  "longName": "Schedule Udemy Course Sections on Google Calendar",
+  "name": "schedule-udemy-course-sections",
+  "longName": "Schedule Udemy Course Sections",
   "version": "1.0.0",
   "description": "Simple utility to schedule Udemy course sections on Google Calendar.",
   "license": "Private",
