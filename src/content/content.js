@@ -2,7 +2,7 @@ import "../utils/startedLog";
 
 let isInjecting = false;
 
-async function injectButtonsIntoSections() {
+async function injectButtonsIntoSectionsIfNotInjectedAlready() {
 
     isInjecting = true;
 
@@ -30,7 +30,20 @@ async function injectButtonsIntoSections() {
 
             const existingButtonEl = sectionEl.querySelector("button:not([data-purpose='calendar'])");
 
-            existingButtonEl.insertAdjacentHTML("afterend", `<div><button data-purpose="calendar">Schedule on Google Calendar</button></div>`);
+            existingButtonEl.insertAdjacentHTML("afterend", `
+                <div>
+                    <button style="
+                            border: 1px solid black;
+                            background: none;
+                            padding: 8px;
+                            border-radius: 5px;
+                            margin: 8px 0px;
+                    " data-purpose="calendar"
+                    >
+                        Schedule on Google Calendar
+                    </button>
+                </div>
+            `);
             sectionEl.addEventListener("click", e => {
                 if(e.target?.nodeName === "BUTTON" && e.target?.dataset?.purpose === "calendar") {
                     e.stopPropagation();
@@ -118,7 +131,11 @@ async function waitForPageToSettle(requiredSettleDurationMs = 50) {
 async function main() {
     await waitForSectionsToExist();
     await waitForPageToSettle();
-    await injectButtonsIntoSections();
+    await injectButtonsIntoSectionsIfNotInjectedAlready();
+
+    setInterval(() => {
+        injectButtonsIntoSectionsIfNotInjectedAlready();
+    }, 1000);
 }
 
 main();
