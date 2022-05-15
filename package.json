@@ -1,9 +1,9 @@
 {
   "author": "Cuyler Stuwe",
-  "name": "minimal-chrome-extension-boilerplate",
-  "longName": "Minimal Chrome Extension Boilerplate",
+  "name": "schedule-udemy-courses-on-google-calendar",
+  "longName": "Schedule Udemy Course Sections on Google Calendar",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simple utility to schedule Udemy course sections on Google Calendar.",
   "license": "Private",
   "main": "index.js",
   "scripts": {
