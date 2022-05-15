@@ -1,0 +1,42 @@
+{
+  "author": "Cuyler Stuwe",
+  "name": "minimal-chrome-extension-boilerplate",
+  "longName": "Minimal Chrome Extension Boilerplate",
+  "version": "1.0.0",
+  "description": "",
+  "license": "Private",
+  "main": "index.js",
+  "scripts": {
+    "copy-verbatim-directories": "shx mkdir -p ./dist/icons && cd ./src && shx cp -R icons ../dist/",
+    "copy-verbatim-files": "cd ./src && shx cp ./popup/popup.html ../dist/",
+    "render-manifest-from-package-json": "cd ./src && node manifest",
+    "build:local-dev": "cross-env-shell NODE_ENV=debug BUILD_ENV=local-dev \"npm run generate-key-pair-if-not-generated && shx rm -rf dist && npx webpack && gulp copy-verbatim-directories && npm run copy-verbatim-files && npm run render-manifest-from-package-json\"",
+    "build:updated-deploy": "cross-env-shell NODE_ENV=production BUILD_ENV=updated-deploy \"npm run generate-key-pair-if-not-generated && shx rm -rf dist && npx webpack && gulp copy-verbatim-directories && npm run copy-verbatim-files && npm run render-manifest-from-package-json\"",
+    "build:initial-deploy": "cross-env-shell NODE_ENV=production BUILD_ENV=initial-deploy \"npm run generate-key-pair-if-not-generated && shx rm -rf dist && npx webpack && gulp copy-verbatim-directories && npm run copy-verbatim-files && npm run render-manifest-from-package-json && cp private-key.pem dist/key.pem\"",
+    "localhost-redux-debugger": "redux-devtools --hostname=localhost --port=9001",
+    "generate-private-key": "2>/dev/null openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out private-key.pem",
+    "generate-derived-public-key": "2>/dev/null openssl rsa -in private-key.pem -pubout -outform DER | openssl base64 -A -out public-key-base64.txt",
+    "generate-key-pair": "npm run generate-private-key && npm run generate-derived-public-key",
+    "generate-key-pair-if-not-generated": "(shx test -f private-key.pem && shx test -f public-key-base64.txt) || npm run generate-key-pair",
+    "copy-private-key-to-dist": "cp private-key-upload.pem dist/key.pem",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.14.6",
+    "@babel/plugin-proposal-object-rest-spread": "^7.14.7",
+    "@babel/plugin-proposal-optional-chaining": "^7.14.5",
+    "@babel/preset-env": "^7.14.7",
+    "@types/chrome": "*",
+    "@types/jest": "*",
+    "babel-eslint": "^10.0.2",
+    "babel-loader": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "gulp": "^4.0.2",
+    "gulp-cli": "^2.3.0",
+    "jest": "^27.0.6",
+    "shx": "^0.3.3",
+    "webpack": "^5.45.1",
+    "webpack-cli": "^4.7.2"
+  },
+  "dependencies": {}
+}
