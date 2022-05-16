@@ -1,10 +1,48 @@
 import "../utils/startedLog";
+import { saveAs } from "file-saver";
+import { createEvent } from "ics";
+import sanitizeFilename from "sanitize-filename";
 
-let isInjecting = false;
+function toIcsText({title, description, startTimestamp, totalMin, url}) {
+
+    const dateFromGivenTimestamp = new Date(startTimestamp);
+
+    const event = {
+        start: [
+            dateFromGivenTimestamp.getFullYear(),
+            dateFromGivenTimestamp.getMonth() + 1,
+            dateFromGivenTimestamp.getDate(),
+            dateFromGivenTimestamp.getHours(),
+            dateFromGivenTimestamp.getMinutes()
+        ],
+        duration: { minutes: totalMin },
+        title,
+        description,
+        url: url ?? undefined,
+        status: 'CONFIRMED',
+        busyStatus: 'BUSY',
+        attendees: []
+    }
+
+    const { value } = createEvent(event);
+
+    return value;
+}
+
+function writeIcsFile(icsFileData, filename = "event.ics") {
+    var file = new File([icsFileData], filename, {type: "text/calendar;charset=utf-8"});
+    saveAs(file);
+}
+
+function moduleTitleToPrettyFilename(courseTitle) {
+    return sanitizeFilename(
+        courseTitle
+            .replace(/ /g, "-")
+            .toLowerCase()
+    );
+}
 
 async function injectButtonsIntoSectionsIfNotInjectedAlready() {
-
-    isInjecting = true;
 
     const courseLinkEl = document.querySelector("a[href^='/course']");
     const courseTitle = courseLinkEl?.innerText?.trim();
@@ -32,6 +70,9 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
 
             existingButtonEl.insertAdjacentHTML("afterend", `
                 <div>
+                    <span>
+                        Schedule: 
+                    </span>
                     <button style="
                             border: 1px solid black;
                             background: none;
@@ -40,19 +81,25 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
                             margin: 8px 0px;
                     " data-purpose="calendar"
                     >
-                        Schedule on Google Calendar
+                        Google Calendar
+                    </button>
+                    <button style="
+                            border: 1px solid black;
+                            background: none;
+                            padding: 8px;
+                            border-radius: 5px;
+                            margin: 8px 0px;
+                    " data-purpose="ics"
+                    >
+                        ICS Download
                     </button>
                 </div>
             `);
             sectionEl.addEventListener("click", e => {
-                if(e.target?.nodeName === "BUTTON" && e.target?.dataset?.purpose === "calendar") {
+                if(e.target?.nodeName === "BUTTON" && ["calendar", "ics"].includes(e.target?.dataset?.purpose ?? "")) {
                     e.stopPropagation();
                     e.stopImmediatePropagation();
                     e.preventDefault();
-
-                    const eventAddBase = "https://calendar.google.com/calendar/u/0/r/eventedit";
-                    const encodedEventTitle = encodeURIComponent(`Udemy: ${courseTitle} (${sectionTitleText})`);
-
 
                     const rawHrText = rawDurationText?.match(/(\d+)hr/)?.[1] ?? "0";
                     const rawMinText = rawDurationText?.match(/(\d+)min/)?.[1] ?? "0";
@@ -66,22 +113,36 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
                     const startTimestamp = Date.now();
                     const endTimestamp = startTimestamp + totalMs;
 
-                    const toGoogleIso = timestamp => new Date(timestamp).toISOString().replace(/[-:.]/g, "");
+                    const eventTitle = `Udemy: ${courseTitle} (${sectionTitleText})`;
 
-                    const startTimeGoogleIso = toGoogleIso(startTimestamp);
-                    const endTimeGoogleIso = toGoogleIso(endTimestamp);
+                    if(e.target?.dataset?.purpose === "calendar") {
+                        const eventAddBase = "https://calendar.google.com/calendar/u/0/r/eventedit";
+                        const encodedEventTitle = encodeURIComponent(eventTitle);
 
-                    console.log({ hrsAsMinNum, minAsNum, totalMin });
+                        const toGoogleIso = timestamp => new Date(timestamp).toISOString().replace(/[-:.]/g, "");
 
-                    const googleCalendarComposedEventAddLink = `${eventAddBase}?text=${encodedEventTitle}&dates=${startTimeGoogleIso}/${endTimeGoogleIso}`;
+                        const startTimeGoogleIso = toGoogleIso(startTimestamp);
+                        const endTimeGoogleIso = toGoogleIso(endTimestamp);
 
-                    window.open(googleCalendarComposedEventAddLink, "_blank");
+                        const googleCalendarComposedEventAddLink = `${eventAddBase}?text=${encodedEventTitle}&dates=${startTimeGoogleIso}/${endTimeGoogleIso}`;
+
+                        window.open(googleCalendarComposedEventAddLink, "_blank");
+                    }
+                    else if(e.target?.dataset?.purpose === "ics") {
+                        const icsText = toIcsText({
+                            title: eventTitle,
+                            description: "",
+                            startTimestamp,
+                            totalMin
+                        });
+                        writeIcsFile(icsText, moduleTitleToPrettyFilename(sectionTitleText));
+                    }
+
                 }
             }, true);
 
         });
 
-    isInjecting = false;
 }
 
 async function waitForSectionsToExist(refreshRateMs = 200) {

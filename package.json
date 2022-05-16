@@ -38,5 +38,9 @@
     "webpack": "^5.45.1",
     "webpack-cli": "^4.7.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "ics": "^2.35.0",
+    "sanitize-filename": "^1.6.3"
+  }
 }
