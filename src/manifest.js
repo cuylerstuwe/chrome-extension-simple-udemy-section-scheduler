@@ -48,11 +48,13 @@ const manifest = {
         {
             matches: ["https://www.udemy.com/course/*"], // TODO: Make this more specific, rather than the template default of matching everything.
             js: ["content.js"],
+            run_at: "document_start"
             // all_frames: true
         }
     ],
 
     host_permissions: [
+        "https://www.udemy.com/course/*"
     ],
 
     // web_accessible_resources: {
@@ -114,6 +116,7 @@ const manifest = {
         // "processes",
         // "proxy",
         // "sessions",
+        "scripting",
         // "signedInDevices",
         // "storage",
         // "system.cpu",

@@ -3,6 +3,30 @@ import { saveAs } from "file-saver";
 import { createEvent } from "ics";
 import sanitizeFilename from "sanitize-filename";
 
+let curriculumItems;
+let chapterTitleToFirstLectureTuples;
+
+window.addEventListener("message", e => {
+    if(e.data.type === "provideCurriculumItems") {
+        curriculumItems = e.data.curriculumItems;
+        window.postMessage({type: "curriculumItemsReceived"}, "*");
+    }
+});
+
+window.addEventListener("message", e => {
+    if(e?.data?.type === "readyToProvideCurriculumItems") {
+        window.postMessage({type: "requestCurriculumItems"}, "*");
+    }
+});
+
+let didEnoughTimePassToMonkeyPatchXHR = false;
+
+let startTimestamp = Date.now();
+chrome.runtime.sendMessage({type: "monkeyPatchMyXhr"}, () => { });
+while(!didEnoughTimePassToMonkeyPatchXHR) {
+    didEnoughTimePassToMonkeyPatchXHR = Date.now() - startTimestamp > 1000;
+}
+
 function toIcsText({title, description, startTimestamp, totalMin, url}) {
 
     const dateFromGivenTimestamp = new Date(startTimestamp);
@@ -45,6 +69,7 @@ function moduleTitleToPrettyFilename(courseTitle) {
 async function injectButtonsIntoSectionsIfNotInjectedAlready() {
 
     const courseLinkEl = document.querySelector("a[href^='/course']");
+    const courseLink = window.location.origin + courseLinkEl.getAttribute("href")?.trim()?.replace(/\/$/, "");
     const courseTitle = courseLinkEl?.innerText?.trim();
     [...document.querySelectorAll(`[data-purpose^="section-panel-"]`)].map(sectionEl => {
         const titleSpanEl = sectionEl.querySelector(`.udlite-accordion-panel-heading .udlite-accordion-panel-title span`);
@@ -56,7 +81,8 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
             sectionEl,
             titleText: titleSpanEl?.innerText?.trim(),
             rawDurationText,
-            titleSpanEl
+            titleSpanEl,
+            courseLink
         });
     })
         .forEach(({sectionEl, titleText: sectionTitleText, rawDurationText, titleSpanEl}, idx) => {
@@ -113,7 +139,12 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
                     const startTimestamp = Date.now();
                     const endTimestamp = startTimestamp + totalMs;
 
+                    const courseContinueLink = `${courseLink}/learn`;
+                    const lectureIdOfFirstLectureInSection = chapterTitleToFirstLectureTuples[idx][1].id;
+                    const firstLectureInSectionLink = `${courseLink}/learn/lecture/${lectureIdOfFirstLectureInSection}`
+
                     const eventTitle = `Udemy: ${courseTitle} (${sectionTitleText})`;
+                    const description = `Start Section:\n${firstLectureInSectionLink}\n\nContinue Course:\n${courseContinueLink}`;
 
                     if(e.target?.dataset?.purpose === "calendar") {
                         const eventAddBase = "https://calendar.google.com/calendar/u/0/r/eventedit";
@@ -124,14 +155,17 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
                         const startTimeGoogleIso = toGoogleIso(startTimestamp);
                         const endTimeGoogleIso = toGoogleIso(endTimestamp);
 
-                        const googleCalendarComposedEventAddLink = `${eventAddBase}?text=${encodedEventTitle}&dates=${startTimeGoogleIso}/${endTimeGoogleIso}`;
+                        const urlEncodedDescription = encodeURIComponent(description);
+
+                        // https://dylanbeattie.net/2021/01/12/adding-events-to-google-calendar-via-a-link.html
+                        const googleCalendarComposedEventAddLink = `${eventAddBase}?text=${encodedEventTitle}&dates=${startTimeGoogleIso}/${endTimeGoogleIso}&details=${urlEncodedDescription}`;
 
                         window.open(googleCalendarComposedEventAddLink, "_blank");
                     }
                     else if(e.target?.dataset?.purpose === "ics") {
                         const icsText = toIcsText({
                             title: eventTitle,
-                            description: "",
+                            description,
                             startTimestamp,
                             totalMin
                         });
@@ -189,9 +223,36 @@ async function waitForPageToSettle(requiredSettleDurationMs = 50) {
     });
 }
 
+async function waitForCurriculumItemsToHaveBeenReceived() {
+    if(!!curriculumItems) { return Promise.resolve(true); }
+    else {
+        return new Promise(resolve => {
+            window.addEventListener("message", e => {
+                if(e?.data?.type === "curriculumItemsReceived") {
+                    return resolve(true);
+                }
+            });
+        });
+    }
+}
+
 async function main() {
     await waitForSectionsToExist();
     await waitForPageToSettle();
+    await waitForCurriculumItemsToHaveBeenReceived();
+
+    chapterTitleToFirstLectureTuples = curriculumItems?.reduce((acc, val, idx) => {
+        if(val?._class === "chapter") {
+            return ([
+                ...acc,
+                [val?.title, curriculumItems[idx + 1]]
+            ]);
+        }
+        else {
+            return [...acc];
+        }
+    }, []);
+
     await injectButtonsIntoSectionsIfNotInjectedAlready();
 
     setInterval(() => {
@@ -199,4 +260,6 @@ async function main() {
     }, 1000);
 }
 
-main();
+window.addEventListener("DOMContentLoaded", () => {
+    main();
+})
