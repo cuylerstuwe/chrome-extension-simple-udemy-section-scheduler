@@ -1,5 +1,5 @@
 import {toIcsText} from "../transformers/toIcsText";
-import {writeIcsFile} from "./writeIcsFile";
+import {createAndDownloadIcsFile} from "./createAndDownloadIcsFile";
 import {moduleTitleToPrettyFilename} from "../transformers/moduleTitleToPrettyFilename";
 import {findStandaloneNumberInTitle} from "../transformers/findStandaloneNumberInTitle";
 import {allConsequentialWordsInTitleWithoutPunctuation} from "../transformers/toConsequential";
@@ -119,7 +119,7 @@ export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitl
                             startTimestamp,
                             totalMin
                         });
-                        writeIcsFile(icsText, moduleTitleToPrettyFilename(sectionTitleText));
+                        createAndDownloadIcsFile(icsText, moduleTitleToPrettyFilename(sectionTitleText));
                     }
 
                 }
