@@ -3,13 +3,15 @@ import { saveAs } from "file-saver";
 import { createEvent } from "ics";
 import sanitizeFilename from "sanitize-filename";
 
-let curriculumItems;
-let chapterTitleToFirstLectureTuples;
+let curriculumItemsCache;
 
 window.addEventListener("message", e => {
     if(e.data.type === "provideCurriculumItems") {
-        curriculumItems = e.data.curriculumItems;
-        window.postMessage({type: "curriculumItemsReceived"}, "*");
+        curriculumItemsCache = e.data.curriculumItems;
+        window.postMessage({
+            type: "curriculumItemsReceived",
+            curriculumItems: e.data.curriculumItems
+        }, "*");
     }
 });
 
@@ -54,7 +56,7 @@ function toIcsText({title, description, startTimestamp, totalMin, url}) {
 }
 
 function writeIcsFile(icsFileData, filename = "event.ics") {
-    var file = new File([icsFileData], filename, {type: "text/calendar;charset=utf-8"});
+    const file = new File([icsFileData], filename, {type: "text/calendar;charset=utf-8"});
     saveAs(file);
 }
 
@@ -66,7 +68,7 @@ function moduleTitleToPrettyFilename(courseTitle) {
     );
 }
 
-async function injectButtonsIntoSectionsIfNotInjectedAlready() {
+async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitleToFirstLectureTuples}) {
 
     const courseLinkEl = document.querySelector("a[href^='/course']");
     const courseLink = window.location.origin + courseLinkEl.getAttribute("href")?.trim()?.replace(/\/$/, "");
@@ -244,33 +246,24 @@ async function waitForCurriculumItemsRequest() {
         curriculumItemJson = await curriculumItemResponse?.json();
     } catch (err) {}
 
-    if(curriculumItemResponse) {
-        curriculumItems = curriculumItemJson?.results;
-    }
+    return curriculumItemJson?.results;
 }
 
 async function waitForCurriculumItemsToHaveBeenReceived() {
-    if(!!curriculumItems) { return Promise.resolve(true); }
+    if(!!curriculumItemsCache) { return Promise.resolve(curriculumItemsCache); }
     else {
         return new Promise(resolve => {
             window.addEventListener("message", e => {
                 if(e?.data?.type === "curriculumItemsReceived") {
-                    return resolve(true);
+                    return resolve(e?.data?.curriculumItems);
                 }
             });
         });
     }
 }
 
-async function main() {
-    await waitForSectionsToExist();
-    await waitForPageToSettle();
-    await waitForCurriculumItemsRequest();
-    if(!curriculumItems) {
-        await waitForCurriculumItemsToHaveBeenReceived();
-    }
-
-    chapterTitleToFirstLectureTuples = curriculumItems?.reduce((acc, val, idx) => {
+function mapCurriculumItemsToChapterTitleFirstLectureTuples(curriculumItems) {
+    return curriculumItems?.reduce((acc, val, idx) => {
         if(val?._class === "chapter") {
             return ([
                 ...acc,
@@ -281,11 +274,22 @@ async function main() {
             return [...acc];
         }
     }, []);
+}
 
-    await injectButtonsIntoSectionsIfNotInjectedAlready();
+async function main() {
+    await waitForSectionsToExist();
+    await waitForPageToSettle();
+    let curriculumItems = await waitForCurriculumItemsRequest();
+    if(!curriculumItems) {
+        curriculumItems = await waitForCurriculumItemsToHaveBeenReceived();
+    }
+
+    const chapterTitleToFirstLectureTuples = mapCurriculumItemsToChapterTitleFirstLectureTuples(curriculumItems);
+
+    await injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitleToFirstLectureTuples});
 
     setInterval(() => {
-        injectButtonsIntoSectionsIfNotInjectedAlready();
+        injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitleToFirstLectureTuples});
     }, 1000);
 }
 
