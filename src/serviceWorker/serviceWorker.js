@@ -15,7 +15,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     oldXHRSend.apply(this, arguments);
                 };
                 window.XMLHttpRequest.prototype.open = function(method, url) {
-                    this.storedOpenArgs = [...arguments];
                     const isSubscriberCurriculumItemsRequest = url?.match(/https:\/\/www.udemy.com\/api-2.0\/courses\/\d+\/subscriber-curriculum-items/);
                     if(isSubscriberCurriculumItemsRequest) {
                         this.shouldBeForciblyUncached = true;
