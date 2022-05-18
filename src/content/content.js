@@ -24,7 +24,7 @@ let didEnoughTimePassToMonkeyPatchXHR = false;
 let startTimestamp = Date.now();
 chrome.runtime.sendMessage({type: "monkeyPatchMyXhr"}, () => { });
 while(!didEnoughTimePassToMonkeyPatchXHR) {
-    didEnoughTimePassToMonkeyPatchXHR = Date.now() - startTimestamp > 1000;
+    didEnoughTimePassToMonkeyPatchXHR = Date.now() - startTimestamp > 500;
 }
 
 function toIcsText({title, description, startTimestamp, totalMin, url}) {
@@ -223,6 +223,23 @@ async function waitForPageToSettle(requiredSettleDurationMs = 50) {
     });
 }
 
+async function waitForCurriculumItemsRequest() {
+    const courseId = JSON.parse(document.querySelector("[data-module-id='course-taking']")?.dataset?.moduleArgs || "{}")?.courseId;
+    let curriculumItemResponse;
+    try {
+        curriculumItemResponse = await fetch(`https://www.udemy.com/api-2.0/courses/${courseId}/subscriber-curriculum-items/?page_size=1400&fields[lecture]=title,object_index,is_published,sort_order,created,asset,supplementary_assets,is_free&fields[quiz]=title,object_index,is_published,sort_order,type&fields[practice]=title,object_index,is_published,sort_order&fields[chapter]=title,object_index,is_published,sort_order&fields[asset]=title,filename,asset_type,status,time_estimation,is_external&caching_intent=True&cachebust=${Math.random() * 10000}`);
+    } catch(err) {}
+
+    let curriculumItemJson;
+    try {
+        curriculumItemJson = await curriculumItemResponse?.json();
+    } catch (err) {}
+
+    if(curriculumItemResponse) {
+        curriculumItems = curriculumItemJson?.results;
+    }
+}
+
 async function waitForCurriculumItemsToHaveBeenReceived() {
     if(!!curriculumItems) { return Promise.resolve(true); }
     else {
@@ -239,7 +256,11 @@ async function waitForCurriculumItemsToHaveBeenReceived() {
 async function main() {
     await waitForSectionsToExist();
     await waitForPageToSettle();
-    await waitForCurriculumItemsToHaveBeenReceived();
+    await waitForCurriculumItemsRequest();
+    if(!curriculumItems) {
+        await waitForCurriculumItemsToHaveBeenReceived();
+    }
+
 
     chapterTitleToFirstLectureTuples = curriculumItems?.reduce((acc, val, idx) => {
         if(val?._class === "chapter") {
