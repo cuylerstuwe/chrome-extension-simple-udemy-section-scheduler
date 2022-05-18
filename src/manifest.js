@@ -118,7 +118,7 @@ const manifest = {
         // "sessions",
         "scripting",
         // "signedInDevices",
-        // "storage",
+        "storage",
         // "system.cpu",
         // "system.display",
         // "system.memory",

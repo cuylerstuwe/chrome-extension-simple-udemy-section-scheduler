@@ -121,7 +121,7 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
                     </button>
                 </div>
             `);
-            sectionEl.addEventListener("click", e => {
+            sectionEl.addEventListener("click", async e => {
                 if(e.target?.nodeName === "BUTTON" && ["calendar", "ics"].includes(e.target?.dataset?.purpose ?? "")) {
                     e.stopPropagation();
                     e.stopImmediatePropagation();
@@ -147,6 +147,15 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
                     const description = `Start Section:\n${firstLectureInSectionLink}\n\nContinue Course:\n${courseContinueLink}`;
 
                     if(e.target?.dataset?.purpose === "calendar") {
+
+                        const calendarEmailAddress = await new Promise(resolve => {
+                            chrome.storage.local.get( "calendarId", ({ calendarId }) => {
+                                return resolve(calendarId);
+                            });
+                        });
+
+                        const maybeCalendarEmailAddressParam = calendarEmailAddress ? `&src=${calendarEmailAddress}` : "";
+
                         const eventAddBase = "https://calendar.google.com/calendar/u/0/r/eventedit";
                         const encodedEventTitle = encodeURIComponent(eventTitle);
 
@@ -158,7 +167,7 @@ async function injectButtonsIntoSectionsIfNotInjectedAlready() {
                         const urlEncodedDescription = encodeURIComponent(description);
 
                         // https://dylanbeattie.net/2021/01/12/adding-events-to-google-calendar-via-a-link.html
-                        const googleCalendarComposedEventAddLink = `${eventAddBase}?text=${encodedEventTitle}&dates=${startTimeGoogleIso}/${endTimeGoogleIso}&details=${urlEncodedDescription}`;
+                        const googleCalendarComposedEventAddLink = `${eventAddBase}?text=${encodedEventTitle}&dates=${startTimeGoogleIso}/${endTimeGoogleIso}&details=${urlEncodedDescription}${maybeCalendarEmailAddressParam}`;
 
                         window.open(googleCalendarComposedEventAddLink, "_blank");
                     }
@@ -260,7 +269,6 @@ async function main() {
     if(!curriculumItems) {
         await waitForCurriculumItemsToHaveBeenReceived();
     }
-
 
     chapterTitleToFirstLectureTuples = curriculumItems?.reduce((acc, val, idx) => {
         if(val?._class === "chapter") {
