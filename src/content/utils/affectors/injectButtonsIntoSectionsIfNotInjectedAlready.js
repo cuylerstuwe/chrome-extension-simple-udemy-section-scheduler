@@ -2,6 +2,52 @@ import {toIcsText} from "../transformers/toIcsText";
 import {writeIcsFile} from "./writeIcsFile";
 import {moduleTitleToPrettyFilename} from "../transformers/moduleTitleToPrettyFilename";
 
+const isLowercaseWordInconsequential = (() => {
+    const inconsequentialWordsLowercaseLookup = {
+        "the": true,
+        "section": true,
+        "udemy": true,
+        "complete": true,
+        "guide": true,
+        "to": true,
+        "from": true,
+        "and": true,
+        "&": true,
+        "bootcamp": true,
+        "become": true,
+        "a": true,
+        "developer": true,
+        "masterclass": true,
+        "build": true,
+        "including": true,
+        "front": true,
+        "back": true,
+        "working": true,
+        "being": true,
+        "be": true,
+        "in": true
+    };
+    return (word) => inconsequentialWordsLowercaseLookup[word];
+})();
+
+function stripPunctuationAndNumbersFrom(str) {
+    return str.replace(/[\d\[\]()<>"':]/g, "");
+}
+
+function firstConsequentialWordInTitle(title) {
+    const wordsInTitle = stripPunctuationAndNumbersFrom(title)?.split(/\W/).filter(word => !!word?.trim());
+    return wordsInTitle.find(wordInTitle => !isLowercaseWordInconsequential(wordInTitle?.toLowerCase()));
+}
+
+function allConsequentialWordsInTitleWithoutPunctuation(title) {
+    const wordsInTitle = stripPunctuationAndNumbersFrom(title)?.split(/\W/).filter(word => !!word?.trim());
+    return wordsInTitle.filter(wordInTitle => !isLowercaseWordInconsequential(wordInTitle?.toLowerCase()))?.join(" ");
+}
+
+function findStandaloneNumberInTitle(title) {
+    return title.match(/\b\d+\b/)?.[0];
+}
+
 export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitleToFirstLectureTuples}) {
 
     const courseLinkEl = document.querySelector("a[href^='/course']");
@@ -79,16 +125,20 @@ export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitl
                     const lectureIdOfFirstLectureInSection = chapterTitleToFirstLectureTuples[idx][1].id;
                     const firstLectureInSectionLink = `${courseLink}/learn/lecture/${lectureIdOfFirstLectureInSection}`
 
-                    const eventTitle = `Udemy: ${courseTitle} (${sectionTitleText})`;
+                    const { calendarId: calendarEmailAddress, shouldUseVerboseNames } = await new Promise(resolve => {
+                        chrome.storage.local.get(null, ({calendarId, shouldUseVerboseNames}) => {
+                            return resolve({calendarId, shouldUseVerboseNames});
+                        });
+                    });
+
+                    const eventTitle = (
+                        shouldUseVerboseNames
+                            ? `Udemy: ${courseTitle} (${sectionTitleText})`
+                            : `${allConsequentialWordsInTitleWithoutPunctuation(courseTitle)} (${findStandaloneNumberInTitle(sectionTitleText)}: ${allConsequentialWordsInTitleWithoutPunctuation(sectionTitleText)})`
+                    );
                     const description = `Start Section:\n${firstLectureInSectionLink}\n\nContinue Course:\n${courseContinueLink}`;
 
                     if (e.target?.dataset?.purpose === "calendar") {
-
-                        const calendarEmailAddress = await new Promise(resolve => {
-                            chrome.storage.local.get("calendarId", ({calendarId}) => {
-                                return resolve(calendarId);
-                            });
-                        });
 
                         const maybeCalendarEmailAddressParam = calendarEmailAddress ? `&src=${calendarEmailAddress}` : "";
 
