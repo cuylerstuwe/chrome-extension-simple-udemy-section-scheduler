@@ -1,10 +1,10 @@
 import "../utils/startedLog";
-import {waitForCurriculumItemsToHaveBeenReceived} from "./waitForCurriculumItemsToHaveBeenReceived";
-import {waitForPageToSettle} from "./waitForPageToSettle";
-import {waitForCurriculumItemsRequest} from "./waitForCurriculumItemsRequest";
-import {waitForSectionsToExist} from "./waitForSectionsToExist";
-import {mapCurriculumItemsToChapterTitleFirstLectureTuples} from "./mapCurriculumItemsToChapterTitleFirstLectureTuples";
-import {injectButtonsIntoSectionsIfNotInjectedAlready} from "./injectButtonsIntoSectionsIfNotInjectedAlready";
+import {waitForCurriculumItemsToHaveBeenReceived} from "./utils/receivers/waitForCurriculumItemsToHaveBeenReceived";
+import {waitForPageToSettle} from "./utils/delayers/waitForPageToSettle";
+import {waitForCurriculumItemsRequest} from "./utils/receivers/waitForCurriculumItemsRequest";
+import {waitForSectionsToExist} from "./utils/delayers/waitForSectionsToExist";
+import {mapCurriculumItemsToChapterTitleFirstLectureTuples} from "./utils/transformers/mapCurriculumItemsToChapterTitleFirstLectureTuples";
+import {injectButtonsIntoSectionsIfNotInjectedAlready} from "./utils/affectors/injectButtonsIntoSectionsIfNotInjectedAlready";
 
 let curriculumItemsCache;
 

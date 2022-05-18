@@ -1,6 +1,6 @@
-import {toIcsText} from "./toIcsText";
+import {toIcsText} from "../transformers/toIcsText";
 import {writeIcsFile} from "./writeIcsFile";
-import {moduleTitleToPrettyFilename} from "./moduleTitleToPrettyFilename";
+import {moduleTitleToPrettyFilename} from "../transformers/moduleTitleToPrettyFilename";
 
 export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitleToFirstLectureTuples}) {
 
