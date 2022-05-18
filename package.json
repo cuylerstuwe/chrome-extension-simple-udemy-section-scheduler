@@ -2,7 +2,7 @@
   "author": "Cuyler Stuwe",
   "name": "schedule-udemy-course-sections",
   "longName": "Schedule Udemy Course Sections",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Simple utility to schedule Udemy course sections on Google Calendar.",
   "license": "Private",
   "main": "index.js",
