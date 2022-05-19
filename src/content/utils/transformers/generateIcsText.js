@@ -1,6 +1,6 @@
 import {createEvent} from "ics";
 
-export function toIcsText({title, description, startTimestamp, totalMin, url}) {
+export function generateIcsText({title, description, startTimestamp, totalMin, url}) {
 
     const dateFromGivenTimestamp = new Date(startTimestamp);
 
