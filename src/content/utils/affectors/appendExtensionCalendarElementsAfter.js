@@ -1,3 +1,5 @@
+import {buttonPurpose} from "../enums/buttonPurpose";
+
 export function appendExtensionCalendarElementsAfter(existingButtonEl) {
     existingButtonEl.insertAdjacentHTML("afterend", `
                 <div>
@@ -10,7 +12,7 @@ export function appendExtensionCalendarElementsAfter(existingButtonEl) {
                             padding: 8px;
                             border-radius: 5px;
                             margin: 8px 0px;
-                    " data-purpose="calendar"
+                    " data-purpose="${buttonPurpose.ADD_TO_GOOGLE_CALENDAR}"
                     >
                         Google Calendar
                     </button>
@@ -20,7 +22,7 @@ export function appendExtensionCalendarElementsAfter(existingButtonEl) {
                             padding: 8px;
                             border-radius: 5px;
                             margin: 8px 0px;
-                    " data-purpose="ics"
+                    " data-purpose="${buttonPurpose.DOWNLOAD_ICS}"
                     >
                         ICS Download
                     </button>

@@ -11,14 +11,8 @@ import {promptToAddToGoogleCalendar} from "./promptToAddToGoogleCalendar";
 import {getTitleOfCurrentCourse} from "../transformers/getTitleOfCurrentCourse";
 import {scrapeAllSections} from "../scrapers/scrapeAllSections";
 import {generateEventDescription} from "../transformers/generateEventDescription";
-
-const PURPOSE_ADD_TO_GOOGLE_CALENDAR = "calendar";
-const PURPOSE_DOWNLOAD_ICS = "ics";
-const NODE_NAME_BUTTON = "BUTTON";
-
-function isClickTargetAnExtensionAddedButton(e) {
-    return [PURPOSE_ADD_TO_GOOGLE_CALENDAR, PURPOSE_DOWNLOAD_ICS].includes(e.target?.dataset?.purpose ?? "");
-}
+import {buttonPurpose} from "../enums/buttonPurpose";
+import {isElementAnExtensionAddedButton} from "./isElementAnExtensionAddedButton";
 
 export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitleToFirstLectureTuples}) {
 
@@ -28,17 +22,19 @@ export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitl
     scrapeAllSections(courseLink)
         .forEach(({sectionEl, titleText: sectionTitleText, rawDurationText, titleSpanEl}, idx) => {
 
-            const doesButtonAlreadyExist = !!(sectionEl?.querySelector("button[data-purpose='calendar']"));
-            if (doesButtonAlreadyExist) {
+            const doesAnAddToGoogleCalendarButtonAlreadyExist = !!(sectionEl?.querySelector(`button[data-purpose='${buttonPurpose.ADD_TO_GOOGLE_CALENDAR}']`));
+            if (doesAnAddToGoogleCalendarButtonAlreadyExist) {
                 return;
             }
 
-            const existingButtonEl = sectionEl.querySelector("button:not([data-purpose='calendar'])");
+            const existingUdemySectionToggleButtonEl = sectionEl.querySelector(
+                `button:not([data-purpose='${buttonPurpose.ADD_TO_GOOGLE_CALENDAR}']):not([data-purpose='${buttonPurpose.DOWNLOAD_ICS}'])`
+            );
 
-            appendExtensionCalendarElementsAfter(existingButtonEl);
+            appendExtensionCalendarElementsAfter(existingUdemySectionToggleButtonEl);
 
             sectionEl.addEventListener("click", async e => {
-                if (e.target?.nodeName === NODE_NAME_BUTTON && isClickTargetAnExtensionAddedButton(e)) {
+                if (isElementAnExtensionAddedButton(e.target)) {
                     fullyConsumeEvent(e);
 
                     const startTimestamp = Date.now();
@@ -58,9 +54,9 @@ export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitl
                     const eventTitle = generateEventTitle(shouldUseVerboseNames, courseTitle, sectionTitleText);
                     const description = generateEventDescription(firstLectureInSectionLink, courseContinueLink);
 
-                    if (e.target?.dataset?.purpose === PURPOSE_ADD_TO_GOOGLE_CALENDAR) {
+                    if (e.target?.dataset?.purpose === buttonPurpose.ADD_TO_GOOGLE_CALENDAR) {
                         promptToAddToGoogleCalendar(calendarEmailAddress, eventTitle, startTimestamp, endTimestamp, description);
-                    } else if (e.target?.dataset?.purpose === PURPOSE_DOWNLOAD_ICS) {
+                    } else if (e.target?.dataset?.purpose === buttonPurpose.DOWNLOAD_ICS) {
                         buildAndDownloadIcsFile(eventTitle, description, startTimestamp, totalMin, sectionTitleText);
                     }
 
