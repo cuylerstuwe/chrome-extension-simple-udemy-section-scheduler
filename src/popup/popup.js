@@ -1,14 +1,15 @@
-document.body.insertAdjacentHTML("beforeend", `
-    <img src="${chrome.runtime.getURL("icons/example.png")}" width="350" />
-`);
+import React from "react";
+import ReactDOM from "react-dom";
+import PopupApp from "./PopupApp.jsx";
+import {KEY_FOR_MOST_RECENTLY_SERIALIZED_TODO_LIST} from "./constants/KEY_FOR_MOST_RECENTLY_SERIALIZED_TODO_LIST";
+import {initTodoListWithMockDataIfEmpty} from "./utils/initTodoListWithMockDataIfEmpty";
 
-chrome.storage.local.get( null, ({ calendarId, shouldUseVerboseNames }) => {
-    document.querySelector("#calendarId").value = calendarId || "";
-    document.querySelector("#shouldUseVerboseNames").checked = shouldUseVerboseNames;
-});
+initTodoListWithMockDataIfEmpty();
 
-document.querySelector("#save").addEventListener("click", e => {
-    chrome.storage.local.set(({ calendarId: document.querySelector("#calendarId").value }), () => {});
-    chrome.storage.local.set(({ shouldUseVerboseNames: !!(document.querySelector("#shouldUseVerboseNames").checked) }), () => {});
-    window.close();
-});
+const rawMostRecentlySerializedTodoListFromStorage = localStorage.getItem(KEY_FOR_MOST_RECENTLY_SERIALIZED_TODO_LIST);
+const deserializedTodoListFromStorage = JSON.parse(rawMostRecentlySerializedTodoListFromStorage || "[]");
+
+ReactDOM.render(
+    <PopupApp initialTodoListItems={deserializedTodoListFromStorage}/>,
+    document.getElementById("popupApp")
+);
