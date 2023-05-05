@@ -1,4 +1,5 @@
 import {KEY_FOR_MOST_RECENTLY_SERIALIZED_TODO_LIST} from "../constants/KEY_FOR_MOST_RECENTLY_SERIALIZED_TODO_LIST";
+import { v4 as uuidv4 } from 'uuid';
 
 export function initTodoListWithMockDataIfEmpty() {
     if (!localStorage.getItem(KEY_FOR_MOST_RECENTLY_SERIALIZED_TODO_LIST)) {
@@ -6,14 +7,19 @@ export function initTodoListWithMockDataIfEmpty() {
             KEY_FOR_MOST_RECENTLY_SERIALIZED_TODO_LIST,
             JSON.stringify([
                 {
-                    id: 0,
-                    isComplete: false,
-                    label: "Do things"
+                    id: uuidv4(),
+                    isComplete: true,
+                    label: "Download the Schedule Udemy Course Sections extension"
                 },
                 {
-                    id: 1,
+                    id: uuidv4(),
                     isComplete: true,
-                    label: "Something I already did"
+                    label: "Open Learning Tasks for the first time"
+                },
+                {
+                    id: uuidv4(),
+                    isComplete: false,
+                    label: "Add your own task to this list"
                 }
             ])
         );

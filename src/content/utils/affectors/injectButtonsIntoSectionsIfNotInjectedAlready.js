@@ -33,6 +33,14 @@ export async function injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitl
 
             appendExtensionCalendarElementsAfter(existingUdemySectionToggleButtonEl);
 
+            ["mouseover", "mouseout"].forEach(eventType => {
+                sectionEl.addEventListener(eventType, e => {
+                    if (isElementAnExtensionAddedButton(e.target)) {
+                        fullyConsumeEvent(e);
+                    }
+                });
+            });
+
             sectionEl.addEventListener("click", async e => {
                 if (isElementAnExtensionAddedButton(e.target)) {
                     fullyConsumeEvent(e);
