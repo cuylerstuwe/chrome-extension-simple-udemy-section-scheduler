@@ -11,6 +11,8 @@ import {
 } from "./utils/affectors/injectButtonsIntoSectionsIfNotInjectedAlready";
 import {initCurriculumItemListeners} from "./utils/initializers/initCurriculumItemListeners";
 import {blockSynchronouslyForMonkeyPatchingXHR} from "./utils/delayers/blockSynchronouslyForMonkeyPatchingXHR";
+import injectExtensionStylesheetsIfNotInjectedAlready
+    from "./utils/affectors/injectExtensionStylesheetsIfNotInjectedAlready";
 
 const globalDataCache = {
     curriculumItems: undefined
@@ -28,6 +30,8 @@ async function main() {
     }
 
     const chapterTitleToFirstLectureTuples = mapCurriculumItemsToChapterTitleFirstLectureTuples(curriculumItems);
+
+    await injectExtensionStylesheetsIfNotInjectedAlready();
 
     await injectButtonsIntoSectionsIfNotInjectedAlready({chapterTitleToFirstLectureTuples});
 
