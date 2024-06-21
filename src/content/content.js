@@ -160,7 +160,7 @@ async function frontendMastersMain() {
 
     // Get the combined duration of all the lectures in each section
     sections.forEach(section => {
-        section.totalDurationMs = +(section.sectionNameGroup?.querySelector("[data-group-duration]")?.dataset.groupDuration || "0");
+        section.totalDurationMs = (+(section.sectionNameGroup?.querySelector("[data-group-duration]")?.dataset.groupDuration || "0")) * 1000;
     });
 
     sections.forEach(section => {
