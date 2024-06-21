@@ -46,6 +46,15 @@ function isOnFrontendMasters() {
     return currentUrl?.hostname.includes("frontendmasters.com");
 }
 
+function isOnEgghead() {
+    let currentUrl;
+    try {
+        currentUrl = new URL(window.location);
+    } catch(err) {
+    }
+    return currentUrl?.hostname.includes("egghead.io");
+}
+
 function isOnTeachable() {
     const teachableCdnLinkEl = document.querySelector("link[href*='teachablecdn.com']");
     const doesHaveTeachableCdnLink = !!teachableCdnLinkEl;
@@ -132,10 +141,6 @@ async function teachableMain() {
             }
         }, true);
     });
-
-
-    console.log({sections});
-
 }
 
 async function frontendMastersMain() {
@@ -202,6 +207,83 @@ async function frontendMastersMain() {
     });
 }
 
+async function eggheadMain() {
+    const courseName = document.querySelector('h1')?.innerText || "";
+
+    // Find all the sections
+    const sectionsEls = document.querySelectorAll('section');
+
+    const sections = [...(sectionsEls || [])].map(sectionEl => ({
+        el: sectionEl,
+        sectionNameEl: sectionEl.querySelector('h2'),
+    }));
+
+    // Get the title of each section
+    sections.forEach(section => section.title = courseName || "");
+
+    // Find all the lectures in each section
+    sections.forEach(section => {
+        section.lectures = [...(section.el.querySelectorAll('li') || [])].map(lectureEl => ({
+            name: lectureEl.querySelector("[href]")?.innerText?.trim() || "",
+            durationStr: lectureEl.querySelector("[href]")?.parentElement?.nextElementSibling?.innerText?.trim() || ""
+        }));
+    });
+
+    // Get the combined duration of all the lectures in each section
+    sections.forEach(section => {
+        section.totalDurationMs = section.lectures.reduce((acc, lecture) => {
+            const durationStr = lecture.durationStr;
+            if(!durationStr) return acc;
+            const durationParts = durationStr?.match(/(\d+)m (\d+)s/);
+            const minutes = parseInt(durationStr?.match(/(\d+)m/)?.[1]) || 0;
+            const seconds = parseInt(durationStr?.match(/(\d+)s/)?.[1]) || 0;
+            return acc + (((minutes * 60) + seconds) * 1000);
+        }, 0);
+    });
+
+    sections.forEach(section => {
+        setTimeout(() => {
+            section.sectionNameEl.insertAdjacentHTML('beforeend', `
+            <button class="__udemy-scheduler__add_to_google_calendar" style="
+                    border: 1px solid black;
+                    background: none;
+                    padding: 8px;
+                    border-radius: 5px;
+                    margin: 8px 0px;
+                    cursor: pointer !important;
+            " data-purpose="${buttonPurpose.ADD_TO_GOOGLE_CALENDAR}"
+            >
+                Google Calendar
+            </button>
+        `);
+        }, 1);
+
+        section.sectionNameEl.addEventListener("click", async e => {
+            if (isElementAnExtensionAddedButton(e.target)) {
+                fullyConsumeEvent(e);
+
+                const startTimestamp = Date.now();
+
+                const { calendarId: calendarEmailAddress, shouldUseVerboseNames } = await new Promise(resolve => {
+                    chrome.storage.local.get(null, ({calendarId, shouldUseVerboseNames}) => {
+                        return resolve({calendarId, shouldUseVerboseNames});
+                    });
+                });
+
+                const eventTitle = generateEventTitle(shouldUseVerboseNames, courseName, "");
+                const description = generateEventDescription(window.location.href, window.location.href);
+
+                if (e.target?.dataset?.purpose === buttonPurpose.ADD_TO_GOOGLE_CALENDAR) {
+                    const endTimestamp = Date.now() + section.totalDurationMs;
+                    promptToAddToGoogleCalendar(calendarEmailAddress, eventTitle, startTimestamp, endTimestamp, description);
+                }
+            }
+        }, true);
+    });
+
+    console.log({sections});
+}
+
 async function udemyMain() {
     await waitForSectionsToExist();
     await waitForPageToSettle();
@@ -242,5 +324,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
     if(isOnFrontendMasters()) {
         frontendMastersMain().then(() => {});
+    }
+
+    if(isOnEgghead()) {
+        eggheadMain().then(() => {});
+    } else {
+        console.log('not egghead')
     }
 })
