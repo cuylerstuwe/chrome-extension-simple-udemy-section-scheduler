@@ -37,6 +37,15 @@ function isOnUdemy() {
     return currentUrl?.hostname.includes("udemy.com");
 }
 
+function isOnFrontendMasters() {
+    let currentUrl;
+    try {
+        currentUrl = new URL(window.location);
+    } catch(err) {
+    }
+    return currentUrl?.hostname.includes("frontendmasters.com");
+}
+
 function isOnTeachable() {
     const teachableCdnLinkEl = document.querySelector("link[href*='teachablecdn.com']");
     const doesHaveTeachableCdnLink = !!teachableCdnLinkEl;
@@ -129,6 +138,70 @@ async function teachableMain() {
 
 }
 
+async function frontendMastersMain() {
+    const courseName = document.querySelector('h1')?.innerText || "";
+
+    const courseLessonGroups = [...document.querySelectorAll('.Course-Lesson-Group')];
+    const courseLessonLists = [...document.querySelectorAll('.Course-Lesson-List')];
+
+    // Find all the sections
+    const zippedSectionEls = courseLessonGroups.map((groupEl, index) => {
+        return [].concat(groupEl, courseLessonLists[index]);
+    });
+
+    const sections = zippedSectionEls.map(zippedSectionEl => ({
+        el: zippedSectionEl[1],
+        sectionNameGroup: zippedSectionEl[0],
+        sectionNameEl: zippedSectionEl[0]?.querySelector('[class*="Heading"]'),
+    }));
+
+    // Get the title of each section
+    sections.forEach(section => section.title = section.sectionNameEl?.innerText?.trim() || "");
+
+    // Get the combined duration of all the lectures in each section
+    sections.forEach(section => {
+        section.totalDurationMs = +(section.sectionNameGroup?.querySelector("[data-group-duration]")?.dataset.groupDuration || "0");
+    });
+
+    sections.forEach(section => {
+        section.sectionNameEl.insertAdjacentHTML('beforeend', `
+            <button class="__udemy-scheduler__add_to_google_calendar" style="
+                    border: 1px solid black;
+                    background: none;
+                    padding: 8px;
+                    border-radius: 5px;
+                    margin: 8px 0px;
+                    cursor: pointer !important;
+            " data-purpose="${buttonPurpose.ADD_TO_GOOGLE_CALENDAR}"
+            >
+                Google Calendar
+            </button>
+        `);
+
+        section.sectionNameEl.addEventListener("click", async e => {
+            if (isElementAnExtensionAddedButton(e.target)) {
+                fullyConsumeEvent(e);
+
+                const startTimestamp = Date.now();
+
+                const { calendarId: calendarEmailAddress, shouldUseVerboseNames } = await new Promise(resolve => {
+                    chrome.storage.local.get(null, ({calendarId, shouldUseVerboseNames}) => {
+                        return resolve({calendarId, shouldUseVerboseNames});
+                    });
+                });
+
+                const eventTitle = generateEventTitle(shouldUseVerboseNames, courseName, section.title || "");
+                const description = generateEventDescription(window.location.href, window.location.href);
+
+                if (e.target?.dataset?.purpose === buttonPurpose.ADD_TO_GOOGLE_CALENDAR) {
+                    const endTimestamp = Date.now() + section.totalDurationMs;
+                    promptToAddToGoogleCalendar(calendarEmailAddress, eventTitle, startTimestamp, endTimestamp, description);
+                }
+            }
+        }, true);
+    });
+}
+
 async function udemyMain() {
     await waitForSectionsToExist();
     await waitForPageToSettle();
@@ -162,10 +235,12 @@ window.addEventListener("DOMContentLoaded", () => {
     if(isOnUdemy()) {
         udemyMain().then(() => {});
     }
+
     if(isOnTeachable()) {
-        console.log('on teachable')
         teachableMain().then(() => {});
-    } else {
-        console.log("not on teachable");
+    }
+
+    if(isOnFrontendMasters()) {
+        frontendMastersMain().then(() => {});
     }
 })
