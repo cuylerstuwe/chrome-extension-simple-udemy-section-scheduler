@@ -13,15 +13,123 @@ import {initCurriculumItemListeners} from "./utils/initializers/initCurriculumIt
 import {blockSynchronouslyForMonkeyPatchingXHR} from "./utils/delayers/blockSynchronouslyForMonkeyPatchingXHR";
 import injectExtensionStylesheetsIfNotInjectedAlready
     from "./utils/affectors/injectExtensionStylesheetsIfNotInjectedAlready";
+import {isElementAnExtensionAddedButton} from "./utils/affectors/isElementAnExtensionAddedButton";
+import {fullyConsumeEvent} from "./utils/affectors/fullyConsumeEvent";
+import {
+    getParsedDurationAndEndTimestampFromRawUdemyTextAndStartTimestamp
+} from "./utils/transformers/getParsedDurationAndEndTimestampFromRawUdemyTextAndStartTimestamp";
+import {generateEventTitle} from "./utils/transformers/generateEventTitle";
+import {generateEventDescription} from "./utils/transformers/generateEventDescription";
+import {buttonPurpose} from "./utils/enums/buttonPurpose";
+import {promptToAddToGoogleCalendar} from "./utils/affectors/promptToAddToGoogleCalendar";
+import {buildAndDownloadIcsFile} from "./utils/affectors/buildAndDownloadIcsFile";
 
 const globalDataCache = {
     curriculumItems: undefined
 };
 
-initCurriculumItemListeners(globalDataCache);
-blockSynchronouslyForMonkeyPatchingXHR();
+function isOnUdemy() {
+    let currentUrl;
+    try {
+        currentUrl = new URL(window.location);
+    } catch(err) {
+    }
+    return currentUrl?.hostname.includes("udemy.com");
+}
 
-async function main() {
+function isOnTeachable() {
+    const teachableCdnLinkEl = document.querySelector("link[href*='teachablecdn.com']");
+    const doesHaveTeachableCdnLink = !!teachableCdnLinkEl;
+    return doesHaveTeachableCdnLink;
+}
+
+if(isOnUdemy()) {
+    udemyInit();
+}
+
+function udemyInit() {
+    initCurriculumItemListeners(globalDataCache);
+    blockSynchronouslyForMonkeyPatchingXHR();
+}
+
+async function teachableMain() {
+    const courseName = document.querySelector('.course-sidebar h2')?.innerText || "";
+
+    // Find all the sections
+    const sectionsEls = document.querySelectorAll('.course-section');
+
+    const sections = [...(sectionsEls || [])].map(sectionEl => ({
+        el: sectionEl,
+        sectionNameEl: sectionEl.querySelector('.section-title'),
+    }));
+
+    // Get the title of each section
+    sections.forEach(section => section.title = section.el.querySelector('.section-title')?.innerText?.trim() || "");
+
+    // Find all the lectures in each section
+    sections.forEach(section => {
+        section.lectures = [...(section.el.querySelectorAll('.item') || [])].map(lectureEl => ({
+            name: lectureEl.querySelector(".lecture-name")?.innerText?.trim() || "",
+            durationStr: lectureEl.querySelector(".lecture-name")?.innerText?.match(/\((\d+:\d+)\)/)?.[1] || "",
+        }));
+    });
+
+    // Get the combined duration of all the lectures in each section
+    sections.forEach(section => {
+        section.totalDurationMs = section.lectures.reduce((acc, lecture) => {
+            const durationStr = lecture.durationStr;
+            if(!durationStr) return acc;
+            const durationParts = durationStr?.split(":");
+            const minutes = parseInt(durationParts[0]);
+            const seconds = parseInt(durationParts[1]);
+            return acc + (((minutes * 60) + seconds) * 1000);
+        }, 0);
+    });
+
+    sections.forEach(section => {
+        section.sectionNameEl.insertAdjacentHTML('beforeend', `
+            <button class="__udemy-scheduler__add_to_google_calendar" style="
+                    border: 1px solid black;
+                    background: none;
+                    padding: 8px;
+                    border-radius: 5px;
+                    margin: 8px 0px;
+                    cursor: pointer !important;
+            " data-purpose="${buttonPurpose.ADD_TO_GOOGLE_CALENDAR}"
+            >
+                Google Calendar
+            </button>
+        `);
+
+        section.sectionNameEl.addEventListener("click", async e => {
+            if (isElementAnExtensionAddedButton(e.target)) {
+                fullyConsumeEvent(e);
+
+                const startTimestamp = Date.now();
+
+                const { calendarId: calendarEmailAddress, shouldUseVerboseNames } = await new Promise(resolve => {
+                    chrome.storage.local.get(null, ({calendarId, shouldUseVerboseNames}) => {
+                        return resolve({calendarId, shouldUseVerboseNames});
+                    });
+                });
+
+                const eventTitle = generateEventTitle(shouldUseVerboseNames, courseName, section.title || "");
+                const description = generateEventDescription(window.location.href, window.location.href);
+
+                if (e.target?.dataset?.purpose === buttonPurpose.ADD_TO_GOOGLE_CALENDAR) {
+                    const endTimestamp = Date.now() + section.totalDurationMs;
+                    promptToAddToGoogleCalendar(calendarEmailAddress, eventTitle, startTimestamp, endTimestamp, description);
+                }
+            }
+        }, true);
+    });
+
+
+    console.log({sections});
+
+}
+
+async function udemyMain() {
     await waitForSectionsToExist();
     await waitForPageToSettle();
     let curriculumItems = await waitForCurriculumItemsRequest();
@@ -51,5 +159,13 @@ async function main() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-    main();
+    if(isOnUdemy()) {
+        udemyMain().then(() => {});
+    }
+    if(isOnTeachable()) {
+        console.log('on teachable')
+        teachableMain().then(() => {});
+    } else {
+        console.log("not on teachable");
+    }
 })
